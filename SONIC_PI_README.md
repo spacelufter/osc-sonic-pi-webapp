@@ -35,6 +35,13 @@ A demonstration script that:
 - Shows how each command works in isolation
 - Falls back to direct evaluation for other commands
 
+### 4. sonic-pi-loops.rb
+
+A specialized script for working with the Loop Creator interface:
+- Optimized for creating and managing multiple loops
+- Handles loop creation and stopping
+- Provides a clean environment for loop experimentation
+
 ## How to Use
 
 1. Start Sonic Pi
@@ -42,6 +49,26 @@ A demonstration script that:
 3. Run the script (press the Run button)
 4. Open the HTML test page in your browser
 5. Send commands using the buttons or text input
+
+## Using the Loop Creator
+
+The Loop Creator interface allows you to create and manage multiple Sonic Pi loops with customizable parameters:
+
+1. Click on the "Loop Creator" tab in the HTML interface
+2. Click "Add Loop" to create a new loop
+3. Configure the loop parameters:
+   - **Loop Name**: A unique name for your loop
+   - **Synth**: Choose from Sonic Pi's built-in synthesizers
+   - **Note**: Select the note to play
+   - **Sleep Time**: Time between notes (in seconds)
+   - **Attack**: How quickly the note reaches full volume (0-5 seconds)
+   - **Sustain**: How long the note holds at full volume (0-5 seconds)
+   - **Release**: How long the note takes to fade out (0-5 seconds)
+4. Click "Start Loop" to begin playing the loop
+5. Click "Stop Loop" to stop the loop
+6. Click "Remove" to delete the loop
+
+You can create multiple loops with different parameters, and they will all play simultaneously in Sonic Pi.
 
 ## Example Commands
 
@@ -61,6 +88,7 @@ These commands are supported by all scripts:
 - Check the Sonic Pi log panel for error messages
 - Verify that the WebSocket server is running (`npm run server`)
 - Make sure the ports match (the server should send to port 4561)
+- If loops don't stop properly, you may need to restart Sonic Pi
 
 ## Advanced Usage
 
@@ -68,4 +96,5 @@ You can modify these scripts to:
 - Add more predefined patterns
 - Change the OSC address or port
 - Add more sophisticated error handling
-- Create interactive performances by combining with other Sonic Pi code 
+- Create interactive performances by combining with other Sonic Pi code
+- Extend the Loop Creator with additional parameters and features 

@@ -5,9 +5,10 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       padding: 20px;
+      background-color: #f5f5f5;
     }
     .container {
       display: flex;
@@ -18,10 +19,17 @@
       display: flex;
       gap: 10px;
     }
-    input {
-      flex-grow: 1;
+    input, select {
       padding: 8px;
       font-size: 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    input[type="number"] {
+      width: 80px;
+    }
+    input[type="text"] {
+      flex-grow: 1;
     }
     button {
       padding: 8px 16px;
@@ -30,6 +38,7 @@
       border: none;
       cursor: pointer;
       font-size: 16px;
+      border-radius: 4px;
     }
     button:hover {
       background-color: #45a049;
@@ -37,9 +46,10 @@
     #output {
       border: 1px solid #ddd;
       padding: 10px;
-      height: 300px;
+      height: 200px;
       overflow-y: auto;
-      background-color: #f9f9f9;
+      background-color: #fff;
+      border-radius: 4px;
     }
     .examples {
       display: grid;
@@ -53,6 +63,7 @@
       border: none;
       cursor: pointer;
       text-align: center;
+      border-radius: 4px;
     }
     .example-button:hover {
       background-color: #0b7dda;
@@ -70,6 +81,117 @@
       background-color: #f2dede;
       color: #a94442;
     }
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 0;
+    }
+    .loop-container {
+      margin-top: 20px;
+    }
+    .loop-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      position: relative;
+    }
+    .loop-controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .loop-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+    .remove-loop {
+      background-color: #f44336;
+    }
+    .remove-loop:hover {
+      background-color: #d32f2f;
+    }
+    .play-loop {
+      background-color: #4CAF50;
+    }
+    .stop-loop {
+      background-color: #f44336;
+    }
+    .loop-status {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #ccc;
+    }
+    .loop-running {
+      background-color: #4CAF50;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .control-group label {
+      margin-bottom: 5px;
+      font-size: 14px;
+      color: #666;
+    }
+    .note-selector {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      margin-top: 10px;
+    }
+    .note-button {
+      padding: 5px;
+      font-size: 12px;
+    }
+    .tab-container {
+      margin-top: 20px;
+    }
+    .tab-buttons {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 15px;
+    }
+    .tab-button {
+      padding: 10px 20px;
+      background-color: #f1f1f1;
+      border: none;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .tab-button.active {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -78,28 +200,75 @@
   <div class="container">
     <div id="connection-status" class="status disconnected">Disconnected</div>
     
-    <div class="input-group">
-      <input id="message" type="text" placeholder="Enter Sonic Pi code (e.g., play 60)">
-      <button onclick="sendMessage()">Send</button>
+    <div class="tab-container">
+      <div class="tab-buttons">
+        <button class="tab-button active" onclick="openTab(event, 'simple-commands')">Simple Commands</button>
+        <button class="tab-button" onclick="openTab(event, 'loop-creator')">Loop Creator</button>
+      </div>
+      
+      <div id="simple-commands" class="tab-content active">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Send Custom Command</h2>
+          </div>
+          <div class="input-group">
+            <input id="message" type="text" placeholder="Enter Sonic Pi code (e.g., play 60)">
+            <button onclick="sendMessage()">Send</button>
+          </div>
+          
+          <h3>Examples</h3>
+          <div class="examples">
+            <button class="example-button" onclick="sendExample('play 60')">Play Middle C</button>
+            <button class="example-button" onclick="sendExample('play_chord [60, 64, 67]')">Play C Major Chord</button>
+            <button class="example-button" onclick="sendExample('use_synth :fm; play 72')">FM Synth High C</button>
+            <button class="example-button" onclick="sendExample('sample :loop_amen')">Amen Break</button>
+            <button class="example-button" onclick="sendExample('use_bpm 120; 16.times do\n  sample :bd_haus, rate: 1\n  sleep 0.5\nend')">Drum Loop</button>
+            <button class="example-button" onclick="sendExample('use_synth :tb303; play_pattern_timed scale(:e3, :minor), 0.25, release: 0.1')">TB303 Pattern</button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="loop-creator" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Create New Loop</h2>
+            <button onclick="addNewLoop()">+ Add Loop</button>
+          </div>
+          
+          <div id="loops-container" class="loop-container">
+            <!-- Loop cards will be added here -->
+          </div>
+        </div>
+      </div>
     </div>
     
-    <h2>Examples</h2>
-    <div class="examples">
-      <button class="example-button" onclick="sendExample('play 60')">Play Middle C</button>
-      <button class="example-button" onclick="sendExample('play_chord [60, 64, 67]')">Play C Major Chord</button>
-      <button class="example-button" onclick="sendExample('use_synth :fm; play 72')">FM Synth High C</button>
-      <button class="example-button" onclick="sendExample('sample :loop_amen')">Amen Break</button>
-      <button class="example-button" onclick="sendExample('use_bpm 120; 16.times do\n  sample :bd_haus, rate: 1\n  sleep 0.5\nend')">Drum Loop</button>
-      <button class="example-button" onclick="sendExample('use_synth :tb303; play_pattern_timed scale(:e3, :minor), 0.25, release: 0.1')">TB303 Pattern</button>
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Response</h2>
+        <button onclick="clearOutput()">Clear</button>
+      </div>
+      <div id="output"></div>
     </div>
-    
-    <h2>Response</h2>
-    <div id="output"></div>
   </div>
 
   <script>
     let ws;
     let reconnectInterval;
+    let loopCounter = 0;
+    let activeLoops = {};
+    
+    // Available synths in Sonic Pi
+    const synths = [
+      'sine', 'saw', 'beep', 'tri', 'square', 'pulse', 'subpulse', 'dpulse', 
+      'fm', 'mod_fm', 'mod_saw', 'mod_sine', 'mod_tri', 'mod_pulse', 
+      'tb303', 'supersaw', 'hoover', 'prophet', 'zawa', 'dsaw', 'dull_bell', 
+      'pretty_bell', 'chiplead', 'chipbass', 'chip_noise', 'blade', 'piano'
+    ];
+    
+    // Notes for the note selector
+    const notes = [
+      'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
+    ];
     
     function connectWebSocket() {
       ws = new WebSocket('ws://localhost:3000');
@@ -157,6 +326,202 @@
       output.scrollTop = output.scrollHeight;
     }
     
+    function clearOutput() {
+      document.getElementById('output').innerHTML = '';
+    }
+    
+    function openTab(evt, tabName) {
+      // Hide all tab content
+      const tabContents = document.getElementsByClassName('tab-content');
+      for (let i = 0; i < tabContents.length; i++) {
+        tabContents[i].classList.remove('active');
+      }
+      
+      // Remove active class from all tab buttons
+      const tabButtons = document.getElementsByClassName('tab-button');
+      for (let i = 0; i < tabButtons.length; i++) {
+        tabButtons[i].classList.remove('active');
+      }
+      
+      // Show the selected tab content and mark the button as active
+      document.getElementById(tabName).classList.add('active');
+      evt.currentTarget.classList.add('active');
+    }
+    
+    function addNewLoop() {
+      loopCounter++;
+      const loopId = `loop-${loopCounter}`;
+      const loopsContainer = document.getElementById('loops-container');
+      
+      // Create synth options
+      let synthOptions = '';
+      synths.forEach(synth => {
+        synthOptions += `<option value=":${synth}">:${synth}</option>`;
+      });
+      
+      // Create the loop card
+      const loopCard = document.createElement('div');
+      loopCard.className = 'loop-card';
+      loopCard.id = loopId;
+      loopCard.innerHTML = `
+        <div class="loop-status" id="${loopId}-status"></div>
+        <div class="control-group">
+          <label for="${loopId}-name">Loop Name:</label>
+          <input type="text" id="${loopId}-name" value="my_loop_${loopCounter}" placeholder="Enter loop name">
+        </div>
+        
+        <div class="loop-controls">
+          <div class="control-group">
+            <label for="${loopId}-synth">Synth:</label>
+            <select id="${loopId}-synth">
+              ${synthOptions}
+            </select>
+          </div>
+          
+          <div class="control-group">
+            <label for="${loopId}-note">Note:</label>
+            <select id="${loopId}-note">
+              <option value=":c3">:c3</option>
+              <option value=":c4" selected>:c4</option>
+              <option value=":c5">:c5</option>
+              <option value=":e3">:e3</option>
+              <option value=":e4">:e4</option>
+              <option value=":g3">:g3</option>
+              <option value=":g4">:g4</option>
+            </select>
+          </div>
+          
+          <div class="control-group">
+            <label for="${loopId}-sleep">Sleep Time:</label>
+            <input type="number" id="${loopId}-sleep" value="0.5" min="0.1" max="10" step="0.1">
+          </div>
+          
+          <div class="control-group">
+            <label for="${loopId}-attack">Attack:</label>
+            <input type="number" id="${loopId}-attack" value="0" min="0" max="5" step="0.1">
+          </div>
+          
+          <div class="control-group">
+            <label for="${loopId}-sustain">Sustain:</label>
+            <input type="number" id="${loopId}-sustain" value="0" min="0" max="5" step="0.1">
+          </div>
+          
+          <div class="control-group">
+            <label for="${loopId}-release">Release:</label>
+            <input type="number" id="${loopId}-release" value="1" min="0" max="5" step="0.1">
+          </div>
+        </div>
+        
+        <div class="note-selector">
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':c4')">C4</button>
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':d4')">D4</button>
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':e4')">E4</button>
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':f4')">F4</button>
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':g4')">G4</button>
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':a4')">A4</button>
+          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':b4')">B4</button>
+        </div>
+        
+        <div class="loop-actions">
+          <button class="play-loop" onclick="startLoop('${loopId}')">Start Loop</button>
+          <button class="stop-loop" onclick="stopLoop('${loopId}')">Stop Loop</button>
+          <button class="remove-loop" onclick="removeLoop('${loopId}')">Remove</button>
+        </div>
+      `;
+      
+      loopsContainer.appendChild(loopCard);
+    }
+    
+    function addNoteToLoop(loopId, note) {
+      document.getElementById(`${loopId}-note`).value = note;
+    }
+    
+    function generateLoopCode(loopId) {
+      const loopName = document.getElementById(`${loopId}-name`).value;
+      const synth = document.getElementById(`${loopId}-synth`).value;
+      const note = document.getElementById(`${loopId}-note`).value;
+      const sleep = document.getElementById(`${loopId}-sleep`).value;
+      const attack = document.getElementById(`${loopId}-attack`).value;
+      const sustain = document.getElementById(`${loopId}-sustain`).value;
+      const release = document.getElementById(`${loopId}-release`).value;
+      
+      // Build the Sonic Pi code for the loop
+      let code = `live_loop :${loopName} do\n`;
+      code += `  use_synth ${synth}\n`;
+      
+      // Add note with parameters
+      code += `  play ${note}`;
+      
+      // Only add parameters if they have non-zero values
+      const params = [];
+      if (parseFloat(attack) > 0) params.push(`attack: ${attack}`);
+      if (parseFloat(sustain) > 0) params.push(`sustain: ${sustain}`);
+      if (parseFloat(release) > 0) params.push(`release: ${release}`);
+      
+      if (params.length > 0) {
+        code += `, ${params.join(', ')}`;
+      }
+      
+      code += `\n  sleep ${sleep}\nend`;
+      
+      return code;
+    }
+    
+    function startLoop(loopId) {
+      const loopCode = generateLoopCode(loopId);
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(loopCode);
+        logMessage(`Started loop: ${loopId}`);
+        logMessage(`Code: ${loopCode}`);
+        
+        // Update the status indicator
+        document.getElementById(`${loopId}-status`).classList.add('loop-running');
+        
+        // Store the loop name for stopping later
+        const loopName = document.getElementById(`${loopId}-name`).value;
+        activeLoops[loopId] = loopName;
+      } else {
+        logMessage('Cannot start loop: not connected to server');
+      }
+    }
+    
+    function stopLoop(loopId) {
+      if (!activeLoops[loopId]) {
+        logMessage(`Loop ${loopId} is not running`);
+        return;
+      }
+      
+      const loopName = activeLoops[loopId];
+      const stopCode = `live_loop :${loopName} do\n  stop\nend`;
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(stopCode);
+        logMessage(`Stopped loop: ${loopId}`);
+        
+        // Update the status indicator
+        document.getElementById(`${loopId}-status`).classList.remove('loop-running');
+        
+        // Remove from active loops
+        delete activeLoops[loopId];
+      } else {
+        logMessage('Cannot stop loop: not connected to server');
+      }
+    }
+    
+    function removeLoop(loopId) {
+      // Stop the loop if it's running
+      if (activeLoops[loopId]) {
+        stopLoop(loopId);
+      }
+      
+      // Remove the loop card from the DOM
+      const loopCard = document.getElementById(loopId);
+      if (loopCard) {
+        loopCard.remove();
+      }
+    }
+    
     // Connect when page loads
     connectWebSocket();
     
@@ -166,6 +531,9 @@
         sendMessage();
       }
     });
+    
+    // Add an initial loop
+    addNewLoop();
   </script>
 </body>
 </html> 
