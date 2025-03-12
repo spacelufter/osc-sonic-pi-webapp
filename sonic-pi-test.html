@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sonic Pi WebSocket Controller</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+    input {
+      flex-grow: 1;
+      padding: 8px;
+      font-size: 16px;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #output {
+      border: 1px solid #ddd;
+      padding: 10px;
+      height: 300px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+    }
+    .examples {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .example-button {
+      padding: 10px;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+    }
+    .example-button:hover {
+      background-color: #0b7dda;
+    }
+    .status {
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+    .connected {
+      background-color: #dff0d8;
+      color: #3c763d;
+    }
+    .disconnected {
+      background-color: #f2dede;
+      color: #a94442;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sonic Pi WebSocket Controller</h1>
+  
+  <div class="container">
+    <div id="connection-status" class="status disconnected">Disconnected</div>
+    
+    <div class="input-group">
+      <input id="message" type="text" placeholder="Enter Sonic Pi code (e.g., play 60)">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+    
+    <h2>Examples</h2>
+    <div class="examples">
+      <button class="example-button" onclick="sendExample('play 60')">Play Middle C</button>
+      <button class="example-button" onclick="sendExample('play_chord [60, 64, 67]')">Play C Major Chord</button>
+      <button class="example-button" onclick="sendExample('use_synth :fm; play 72')">FM Synth High C</button>
+      <button class="example-button" onclick="sendExample('sample :loop_amen')">Amen Break</button>
+      <button class="example-button" onclick="sendExample('use_bpm 120; 16.times do\n  sample :bd_haus, rate: 1\n  sleep 0.5\nend')">Drum Loop</button>
+      <button class="example-button" onclick="sendExample('use_synth :tb303; play_pattern_timed scale(:e3, :minor), 0.25, release: 0.1')">TB303 Pattern</button>
+    </div>
+    
+    <h2>Response</h2>
+    <div id="output"></div>
+  </div>
+
+  <script>
+    let ws;
+    let reconnectInterval;
+    
+    function connectWebSocket() {
+      ws = new WebSocket('ws://localhost:3000');
+      
+      ws.onopen = () => {
+        document.getElementById('connection-status').className = 'status connected';
+        document.getElementById('connection-status').textContent = 'Connected to WebSocket Server';
+        clearInterval(reconnectInterval);
+        logMessage('Connected to server');
+      };
+      
+      ws.onmessage = (event) => {
+        logMessage(`Received: ${event.data}`);
+      };
+      
+      ws.onclose = () => {
+        document.getElementById('connection-status').className = 'status disconnected';
+        document.getElementById('connection-status').textContent = 'Disconnected (trying to reconnect...)';
+        logMessage('Disconnected from server');
+        
+        // Try to reconnect
+        if (!reconnectInterval) {
+          reconnectInterval = setInterval(connectWebSocket, 5000);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        logMessage('WebSocket error');
+        console.error('WebSocket error:', error);
+      };
+    }
+    
+    function sendMessage() {
+      const message = document.getElementById('message').value;
+      if (!message) return;
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+        logMessage(`Sent: ${message}`);
+        document.getElementById('message').value = '';
+      } else {
+        logMessage('Cannot send message: not connected to server');
+      }
+    }
+    
+    function sendExample(example) {
+      document.getElementById('message').value = example;
+      sendMessage();
+    }
+    
+    function logMessage(message) {
+      const output = document.getElementById('output');
+      const time = new Date().toLocaleTimeString();
+      output.innerHTML += `<p><strong>${time}</strong>: ${message}</p>`;
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    // Connect when page loads
+    connectWebSocket();
+    
+    // Allow sending message with Enter key
+    document.getElementById('message').addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html> 
