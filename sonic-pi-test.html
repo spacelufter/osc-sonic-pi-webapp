@@ -81,6 +81,25 @@
       background-color: #f2dede;
       color: #a94442;
     }
+    .connection-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .port-input-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .port-input-group input {
+      width: 80px;
+    }
+    .port-input-group label {
+      font-weight: bold;
+    }
+    .connection-message {
+      font-weight: bold;
+    }
     .scale-options {
       margin-top: 8px;
       padding: 8px;
@@ -302,7 +321,16 @@
   <h1>Sonic Pi WebSocket Controller</h1>
   
   <div class="container">
-    <div id="connection-status" class="status disconnected">Disconnected</div>
+    <div id="connection-status" class="status disconnected">
+      <div class="connection-form">
+        <div class="port-input-group">
+          <label for="port-number">Sonic Pi Port:</label>
+          <input type="number" id="port-number" value="4560" min="1" max="65535">
+          <button id="connect-button" onclick="connectToSonicPi()">Connect</button>
+        </div>
+        <div class="connection-message">Disconnected</div>
+      </div>
+    </div>
     
     <div class="tab-container">
       <div class="tab-buttons">
@@ -477,7 +505,7 @@
       
       ws.onopen = () => {
         document.getElementById('connection-status').className = 'status connected';
-        document.getElementById('connection-status').textContent = 'Connected to WebSocket Server';
+        document.querySelector('.connection-message').textContent = 'Connected to WebSocket Server';
         clearInterval(reconnectInterval);
         logMessage('Connected to server');
       };
@@ -488,7 +516,7 @@
       
       ws.onclose = () => {
         document.getElementById('connection-status').className = 'status disconnected';
-        document.getElementById('connection-status').textContent = 'Disconnected (trying to reconnect...)';
+        document.querySelector('.connection-message').textContent = 'Disconnected (trying to reconnect...)';
         logMessage('Disconnected from server');
         
         // Try to reconnect
@@ -503,12 +531,41 @@
       };
     }
     
+    function connectToSonicPi() {
+      const portNumber = parseInt(document.getElementById('port-number').value);
+      
+      if (isNaN(portNumber) || portNumber < 1 || portNumber > 65535) {
+        logMessage('Invalid port number. Please enter a number between 1 and 65535.');
+        return;
+      }
+      
+      // Update the connection message
+      document.querySelector('.connection-message').textContent = 'Connecting...';
+      
+      // Store the port number for later use
+      window.sonicPiPort = portNumber;
+      
+      // Connect to the WebSocket server
+      connectWebSocket();
+      
+      logMessage(`Attempting to connect to Sonic Pi on port ${portNumber}`);
+    }
+    
     function sendMessage() {
       const message = document.getElementById('message').value;
       if (!message) return;
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
+        // If we have a port number, include it with the message
+        if (window.sonicPiPort) {
+          ws.send(JSON.stringify({
+            code: message,
+            port: window.sonicPiPort
+          }));
+        } else {
+          ws.send(message);
+        }
+        
         logMessage(`Sent: ${message}`);
         document.getElementById('message').value = '';
       } else {
@@ -1006,7 +1063,16 @@
       const loopCode = generateLoopCode(loopId);
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(loopCode);
+        // If we have a port number, include it with the message
+        if (window.sonicPiPort) {
+          ws.send(JSON.stringify({
+            code: loopCode,
+            port: window.sonicPiPort
+          }));
+        } else {
+          ws.send(loopCode);
+        }
+        
         logMessage(`Started loop: ${loopId}`);
         logMessage(`Code: ${loopCode}`);
         
@@ -1025,7 +1091,16 @@
       const noteCode = generateNoteCode(noteId);
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(noteCode);
+        // If we have a port number, include it with the message
+        if (window.sonicPiPort) {
+          ws.send(JSON.stringify({
+            code: noteCode,
+            port: window.sonicPiPort
+          }));
+        } else {
+          ws.send(noteCode);
+        }
+        
         logMessage(`Played note: ${noteId}`);
         logMessage(`Code: ${noteCode}`);
       } else {
@@ -1043,7 +1118,16 @@
       const stopCode = `live_loop :${loopName} do\n  stop\nend`;
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(stopCode);
+        // If we have a port number, include it with the message
+        if (window.sonicPiPort) {
+          ws.send(JSON.stringify({
+            code: stopCode,
+            port: window.sonicPiPort
+          }));
+        } else {
+          ws.send(stopCode);
+        }
+        
         logMessage(`Stopped loop: ${loopId}`);
         
         // Update the status indicator
@@ -1235,9 +1319,6 @@
         }
       }
     });
-    
-    // Connect when page loads
-    connectWebSocket();
     
     // Allow sending message with Enter key
     document.getElementById('message').addEventListener('keypress', function(event) {
