@@ -81,6 +81,16 @@
       background-color: #f2dede;
       color: #a94442;
     }
+    .scale-options {
+      margin-top: 8px;
+      padding: 8px;
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      border: 1px solid #eee;
+    }
+    .scale-checkbox {
+      margin-right: 8px;
+    }
     .card {
       background-color: white;
       border-radius: 8px;
@@ -101,10 +111,10 @@
       font-weight: bold;
       margin: 0;
     }
-    .loop-container {
+    .loop-container, .note-container {
       margin-top: 20px;
     }
-    .loop-card {
+    .loop-card, .note-card {
       background-color: white;
       border-radius: 8px;
       padding: 15px;
@@ -112,28 +122,52 @@
       margin-bottom: 15px;
       position: relative;
     }
-    .loop-controls {
+    .loop-controls, .note-controls {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
       margin-bottom: 10px;
     }
-    .loop-actions {
+    .loop-actions, .note-actions {
       display: flex;
       justify-content: space-between;
       margin-top: 10px;
     }
-    .remove-loop {
+    .remove-loop, .remove-note {
       background-color: #f44336;
     }
-    .remove-loop:hover {
+    .remove-loop:hover, .remove-note:hover {
       background-color: #d32f2f;
     }
-    .play-loop {
+    .play-loop, .play-note {
       background-color: #4CAF50;
     }
     .stop-loop {
       background-color: #f44336;
+    }
+    .note-number {
+      position: absolute;
+      top: 5px;
+      right: 15px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: #2196F3;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .note-card.playing .note-number {
+      background-color: #4CAF50;
+      animation: pulse 0.5s;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
     }
     .loop-status {
       position: absolute;
@@ -192,6 +226,76 @@
     .tab-content.active {
       display: block;
     }
+    .octave-selector {
+      display: flex;
+      gap: 5px;
+      margin-top: 5px;
+    }
+    .octave-button {
+      flex: 1;
+      padding: 5px;
+      font-size: 12px;
+      background-color: #e0e0e0;
+    }
+    .octave-button.selected {
+      background-color: #2196F3;
+      color: white;
+    }
+    .effects-section {
+      margin-top: 15px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+    .effects-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .effects-header h3 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .add-effect-btn {
+      font-size: 12px;
+      padding: 5px 10px;
+      background-color: #673AB7;
+    }
+    .effect-card {
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #eee;
+    }
+    .effect-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .effect-title {
+      font-weight: bold;
+      color: #333;
+    }
+    .effect-params {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .effect-param {
+      display: flex;
+      flex-direction: column;
+    }
+    .effect-param label {
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+    .remove-effect {
+      background-color: #f44336;
+      font-size: 12px;
+      padding: 3px 6px;
+    }
   </style>
 </head>
 <body>
@@ -204,6 +308,7 @@
       <div class="tab-buttons">
         <button class="tab-button active" onclick="openTab(event, 'simple-commands')">Simple Commands</button>
         <button class="tab-button" onclick="openTab(event, 'loop-creator')">Loop Creator</button>
+        <button class="tab-button" onclick="openTab(event, 'notes-creator')">Notes</button>
       </div>
       
       <div id="simple-commands" class="tab-content active">
@@ -240,6 +345,19 @@
           </div>
         </div>
       </div>
+      
+      <div id="notes-creator" class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Create Individual Notes</h2>
+            <button onclick="addNewNote()">+ Add Note</button>
+          </div>
+          
+          <div id="notes-container" class="note-container">
+            <!-- Note cards will be added here -->
+          </div>
+        </div>
+      </div>
     </div>
     
     <div class="card">
@@ -255,7 +373,67 @@
     let ws;
     let reconnectInterval;
     let loopCounter = 0;
+    let noteCounter = 0;
     let activeLoops = {};
+    
+    // Available effects in Sonic Pi with their common parameters
+    const effects = {
+      reverb: {
+        name: "Reverb",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          room: { default: 0.6, min: 0, max: 1, step: 0.1 },
+          damp: { default: 0.5, min: 0, max: 1, step: 0.1 }
+        }
+      },
+      echo: {
+        name: "Echo",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          phase: { default: 0.25, min: 0, max: 4, step: 0.1 },
+          decay: { default: 2, min: 0, max: 10, step: 0.1 }
+        }
+      },
+      distortion: {
+        name: "Distortion",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          distort: { default: 0.5, min: 0, max: 1, step: 0.1 }
+        }
+      },
+      wobble: {
+        name: "Wobble",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          phase: { default: 0.5, min: 0, max: 5, step: 0.1 },
+          cutoff_min: { default: 60, min: 0, max: 130, step: 1 },
+          cutoff_max: { default: 100, min: 0, max: 130, step: 1 }
+        }
+      },
+      bitcrusher: {
+        name: "Bitcrusher",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          bits: { default: 8, min: 1, max: 16, step: 1 },
+          sample_rate: { default: 10000, min: 1000, max: 44100, step: 1000 }
+        }
+      },
+      flanger: {
+        name: "Flanger",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          phase: { default: 4, min: 0.1, max: 10, step: 0.1 },
+          depth: { default: 5, min: 0.1, max: 10, step: 0.1 }
+        }
+      },
+      vowel: {
+        name: "Vowel",
+        params: {
+          mix: { default: 0.5, min: 0, max: 1, step: 0.1 },
+          vowel_sound: { default: 1, min: 1, max: 5, step: 1 }
+        }
+      }
+    };
     
     // Available synths in Sonic Pi
     const synths = [
@@ -269,6 +447,30 @@
     const notes = [
       'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
     ];
+    
+    // Available scales in Sonic Pi
+    const scales = [
+      'major', 'minor', 'major_pentatonic', 'minor_pentatonic', 'ionian', 'dorian', 'phrygian',
+      'lydian', 'mixolydian', 'aeolian', 'locrian', 'blues_major', 'blues_minor', 'harmonic_minor',
+      'melodic_minor', 'whole_tone', 'chromatic', 'spanish', 'zhi', 'ritusen', 'egyptian',
+      'hindu', 'hirajoshi', 'hungarian_minor', 'romanian_minor', 'indian', 'diminished', 'augmented'
+    ];
+    
+    // MIDI note numbers for each note in different octaves
+    const midiNotes = {
+      'C': [24, 36, 48, 60, 72, 84, 96],
+      'C#': [25, 37, 49, 61, 73, 85, 97],
+      'D': [26, 38, 50, 62, 74, 86, 98],
+      'D#': [27, 39, 51, 63, 75, 87, 99],
+      'E': [28, 40, 52, 64, 76, 88, 100],
+      'F': [29, 41, 53, 65, 77, 89, 101],
+      'F#': [30, 42, 54, 66, 78, 90, 102],
+      'G': [31, 43, 55, 67, 79, 91, 103],
+      'G#': [32, 44, 56, 68, 80, 92, 104],
+      'A': [33, 45, 57, 69, 81, 93, 105],
+      'A#': [34, 46, 58, 70, 82, 94, 106],
+      'B': [35, 47, 59, 71, 83, 95, 107]
+    };
     
     function connectWebSocket() {
       ws = new WebSocket('ws://localhost:3000');
@@ -359,6 +561,12 @@
         synthOptions += `<option value=":${synth}">:${synth}</option>`;
       });
       
+      // Create note options
+      let noteOptions = '';
+      notes.forEach(note => {
+        noteOptions += `<option value="${note}">${note}</option>`;
+      });
+      
       // Create the loop card
       const loopCard = document.createElement('div');
       loopCard.className = 'loop-card';
@@ -380,15 +588,31 @@
           
           <div class="control-group">
             <label for="${loopId}-note">Note:</label>
-            <select id="${loopId}-note">
-              <option value=":c3">:c3</option>
-              <option value=":c4" selected>:c4</option>
-              <option value=":c5">:c5</option>
-              <option value=":e3">:e3</option>
-              <option value=":e4">:e4</option>
-              <option value=":g3">:g3</option>
-              <option value=":g4">:g4</option>
+            <select id="${loopId}-note" onchange="updateLoopNoteValue('${loopId}')">
+              ${noteOptions}
             </select>
+            <div class="octave-selector" id="${loopId}-octave-selector">
+              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 1)">1</button>
+              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 2)">2</button>
+              <button class="octave-button selected" onclick="selectLoopOctave('${loopId}', 3)">3</button>
+              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 4)">4</button>
+              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 5)">5</button>
+              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 6)">6</button>
+              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 7)">7</button>
+            </div>
+            <input type="hidden" id="${loopId}-midi-value" value="60">
+          </div>
+          
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="${loopId}-use-scale" onchange="toggleLoopScaleMode('${loopId}')"> Use Scale
+            </label>
+            <div id="${loopId}-scale-options" style="display: none; margin-top: 5px;">
+              <label for="${loopId}-scale-type">Scale Type:</label>
+              <select id="${loopId}-scale-type">
+                ${scales.map(scale => `<option value=":${scale}">:${scale}</option>`).join('')}
+              </select>
+            </div>
           </div>
           
           <div class="control-group">
@@ -412,45 +636,133 @@
           </div>
         </div>
         
-        <div class="note-selector">
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':c4')">C4</button>
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':d4')">D4</button>
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':e4')">E4</button>
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':f4')">F4</button>
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':g4')">G4</button>
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':a4')">A4</button>
-          <button class="note-button" onclick="addNoteToLoop('${loopId}', ':b4')">B4</button>
-        </div>
-        
         <div class="loop-actions">
           <button class="play-loop" onclick="startLoop('${loopId}')">Start Loop</button>
           <button class="stop-loop" onclick="stopLoop('${loopId}')">Stop Loop</button>
           <button class="remove-loop" onclick="removeLoop('${loopId}')">Remove</button>
         </div>
+        
+        <div class="effects-section">
+          <div class="effects-header">
+            <h3>Effects</h3>
+            <button class="add-effect-btn" onclick="addEffectToLoop('${loopId}')">Add Effect</button>
+          </div>
+          <div id="${loopId}-effects-container" class="effects-container">
+            <!-- Effects will be added here -->
+          </div>
+        </div>
       `;
       
       loopsContainer.appendChild(loopCard);
+      updateLoopNoteValue(loopId); // Initialize the MIDI value
+    }
+    
+    function selectLoopOctave(loopId, octave) {
+      // Update the octave buttons
+      const octaveButtons = document.querySelectorAll(`#${loopId}-octave-selector .octave-button`);
+      octaveButtons.forEach((button, index) => {
+        if (index === octave - 1) {
+          button.classList.add('selected');
+        } else {
+          button.classList.remove('selected');
+        }
+      });
+      
+      // Update the MIDI value
+      updateLoopNoteValue(loopId);
+    }
+    
+    function toggleLoopScaleMode(loopId) {
+      const useScale = document.getElementById(`${loopId}-use-scale`).checked;
+      document.getElementById(`${loopId}-scale-options`).style.display = useScale ? 'block' : 'none';
+    }
+    
+    function updateLoopNoteValue(loopId) {
+      const noteSelect = document.getElementById(`${loopId}-note`);
+      const selectedNote = noteSelect.value;
+      
+      // Find which octave is selected
+      const octaveButtons = document.querySelectorAll(`#${loopId}-octave-selector .octave-button`);
+      let selectedOctave = 3; // Default to octave 3
+      
+      octaveButtons.forEach((button, index) => {
+        if (button.classList.contains('selected')) {
+          selectedOctave = index + 1;
+        }
+      });
+      
+      // Get the MIDI value for this note and octave
+      const midiValue = midiNotes[selectedNote][selectedOctave - 1];
+      
+      // Update the hidden input
+      document.getElementById(`${loopId}-midi-value`).value = midiValue;
     }
     
     function addNoteToLoop(loopId, note) {
       document.getElementById(`${loopId}-note`).value = note;
+      updateLoopNoteValue(loopId);
     }
     
     function generateLoopCode(loopId) {
       const loopName = document.getElementById(`${loopId}-name`).value;
       const synth = document.getElementById(`${loopId}-synth`).value;
-      const note = document.getElementById(`${loopId}-note`).value;
+      const midiValue = document.getElementById(`${loopId}-midi-value`).value;
       const sleep = document.getElementById(`${loopId}-sleep`).value;
       const attack = document.getElementById(`${loopId}-attack`).value;
       const sustain = document.getElementById(`${loopId}-sustain`).value;
       const release = document.getElementById(`${loopId}-release`).value;
+      const useScale = document.getElementById(`${loopId}-use-scale`).checked;
+      
+      // Get effects
+      const effectsData = getEffectsForElement(loopId);
       
       // Build the Sonic Pi code for the loop
       let code = `live_loop :${loopName} do\n`;
+      
+      // Add synth selection
       code += `  use_synth ${synth}\n`;
       
+      // Open effects blocks
+      effectsData.forEach(effect => {
+        code += `  with_fx :${effect.type}`;
+        
+        // Add effect parameters
+        const paramStrings = [];
+        for (const [paramName, paramValue] of Object.entries(effect.params)) {
+          paramStrings.push(`${paramName}: ${paramValue}`);
+        }
+        
+        if (paramStrings.length > 0) {
+          code += `, ${paramStrings.join(', ')}`;
+        }
+        
+        code += ' do\n';
+      });
+      
+      // Indent based on number of effects
+      const indent = '  ' + '  '.repeat(effectsData.length);
+      
       // Add note with parameters
-      code += `  play ${note}`;
+      if (useScale) {
+        // Get the selected note for scale base and scale type
+        const noteSelect = document.getElementById(`${loopId}-note`);
+        const selectedNote = noteSelect.value.toLowerCase();
+        
+        // Find which octave is selected
+        const octaveButtons = document.querySelectorAll(`#${loopId}-octave-selector .octave-button`);
+        let selectedOctave = 3; // Default to octave 3
+        
+        octaveButtons.forEach((button, index) => {
+          if (button.classList.contains('selected')) {
+            selectedOctave = index + 1;
+          }
+        });
+        
+        const scaleType = document.getElementById(`${loopId}-scale-type`).value;
+        code += `${indent}play (scale :${selectedNote}${selectedOctave}, ${scaleType}).tick`;
+      } else {
+        code += `${indent}play ${midiValue}`;
+      }
       
       // Only add parameters if they have non-zero values
       const params = [];
@@ -462,7 +774,230 @@
         code += `, ${params.join(', ')}`;
       }
       
-      code += `\n  sleep ${sleep}\nend`;
+      code += `\n${indent}sleep ${sleep}\n`;
+      
+      // Close all effect blocks
+      for (let i = effectsData.length - 1; i >= 0; i--) {
+        code += `${'  '.repeat(i + 1)}end\n`;
+      }
+      
+      // Close the loop block
+      code += `end`;
+      
+      return code;
+    }
+    
+    function addNewNote() {
+      noteCounter++;
+      const noteId = `note-${noteCounter}`;
+      const notesContainer = document.getElementById('notes-container');
+      
+      // Create synth options
+      let synthOptions = '';
+      synths.forEach(synth => {
+        synthOptions += `<option value=":${synth}">:${synth}</option>`;
+      });
+      
+      // Create note options
+      let noteOptions = '';
+      notes.forEach(note => {
+        noteOptions += `<option value="${note}">${note}</option>`;
+      });
+      
+      // Create the note card
+      const noteCard = document.createElement('div');
+      noteCard.className = 'note-card';
+      noteCard.id = noteId;
+      noteCard.innerHTML = `
+        <div class="note-controls">
+          <div class="note-number">${noteCounter <= 9 ? noteCounter : ''}</div>
+          <div class="control-group">
+            <label for="${noteId}-synth">Synth:</label>
+            <select id="${noteId}-synth">
+              ${synthOptions}
+            </select>
+          </div>
+          
+          <div class="control-group">
+            <label for="${noteId}-note">Note:</label>
+            <select id="${noteId}-note" onchange="updateNoteValue('${noteId}')">
+              ${noteOptions}
+            </select>
+            <div class="octave-selector" id="${noteId}-octave-selector">
+              <button class="octave-button" onclick="selectOctave('${noteId}', 1)">1</button>
+              <button class="octave-button" onclick="selectOctave('${noteId}', 2)">2</button>
+              <button class="octave-button selected" onclick="selectOctave('${noteId}', 3)">3</button>
+              <button class="octave-button" onclick="selectOctave('${noteId}', 4)">4</button>
+              <button class="octave-button" onclick="selectOctave('${noteId}', 5)">5</button>
+              <button class="octave-button" onclick="selectOctave('${noteId}', 6)">6</button>
+              <button class="octave-button" onclick="selectOctave('${noteId}', 7)">7</button>
+            </div>
+            <input type="hidden" id="${noteId}-midi-value" value="60">
+          </div>
+          
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="${noteId}-use-scale" onchange="toggleNoteScaleMode('${noteId}')"> Use Scale
+            </label>
+            <div id="${noteId}-scale-options" style="display: none; margin-top: 5px;">
+              <label for="${noteId}-scale-type">Scale Type:</label>
+              <select id="${noteId}-scale-type">
+                ${scales.map(scale => `<option value=":${scale}">:${scale}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          
+          <div class="control-group">
+            <label for="${noteId}-attack">Attack:</label>
+            <input type="number" id="${noteId}-attack" value="0" min="0" max="5" step="0.1">
+          </div>
+          
+          <div class="control-group">
+            <label for="${noteId}-sustain">Sustain:</label>
+            <input type="number" id="${noteId}-sustain" value="0" min="0" max="5" step="0.1">
+          </div>
+          
+          <div class="control-group">
+            <label for="${noteId}-release">Release:</label>
+            <input type="number" id="${noteId}-release" value="1" min="0" max="5" step="0.1">
+          </div>
+          
+          <div class="control-group">
+            <label for="${noteId}-amp">Amplitude:</label>
+            <input type="number" id="${noteId}-amp" value="1" min="0" max="5" step="0.1">
+          </div>
+        </div>
+        
+        <div class="note-actions">
+          <button class="play-note" onclick="playNote('${noteId}')">Play Note</button>
+          <button class="remove-note" onclick="removeNote('${noteId}')">Remove</button>
+        </div>
+        
+        <div class="effects-section">
+          <div class="effects-header">
+            <h3>Effects</h3>
+            <button class="add-effect-btn" onclick="addEffectToNote('${noteId}')">Add Effect</button>
+          </div>
+          <div id="${noteId}-effects-container" class="effects-container">
+            <!-- Effects will be added here -->
+          </div>
+        </div>
+      `;
+      
+      notesContainer.appendChild(noteCard);
+      updateNoteValue(noteId); // Initialize the MIDI value
+    }
+    
+    function selectOctave(noteId, octave) {
+      // Update the octave buttons
+      const octaveButtons = document.querySelectorAll(`#${noteId}-octave-selector .octave-button`);
+      octaveButtons.forEach((button, index) => {
+        if (index === octave - 1) {
+          button.classList.add('selected');
+        } else {
+          button.classList.remove('selected');
+        }
+      });
+      
+      // Update the MIDI value
+      updateNoteValue(noteId);
+    }
+    
+    function updateNoteValue(noteId) {
+      const noteSelect = document.getElementById(`${noteId}-note`);
+      const selectedNote = noteSelect.value;
+      
+      // Find which octave is selected
+      const octaveButtons = document.querySelectorAll(`#${noteId}-octave-selector .octave-button`);
+      let selectedOctave = 3; // Default to octave 3
+      
+      octaveButtons.forEach((button, index) => {
+        if (button.classList.contains('selected')) {
+          selectedOctave = index + 1;
+        }
+      });
+      
+      // Get the MIDI value for this note and octave
+      const midiValue = midiNotes[selectedNote][selectedOctave - 1];
+      
+      // Update the hidden input
+      document.getElementById(`${noteId}-midi-value`).value = midiValue;
+    }
+    
+    function generateNoteCode(noteId) {
+      const synth = document.getElementById(`${noteId}-synth`).value;
+      const midiValue = document.getElementById(`${noteId}-midi-value`).value;
+      const attack = document.getElementById(`${noteId}-attack`).value;
+      const sustain = document.getElementById(`${noteId}-sustain`).value;
+      const release = document.getElementById(`${noteId}-release`).value;
+      const amp = document.getElementById(`${noteId}-amp`).value;
+      const useScale = document.getElementById(`${noteId}-use-scale`).checked;
+      
+      // Get effects
+      const effectsData = getEffectsForElement(noteId);
+      
+      // Build the Sonic Pi code for the note
+      let code = `use_synth ${synth}\n`;
+      
+      // Open effects blocks
+      effectsData.forEach(effect => {
+        code += `with_fx :${effect.type}`;
+        
+        // Add effect parameters
+        const paramStrings = [];
+        for (const [paramName, paramValue] of Object.entries(effect.params)) {
+          paramStrings.push(`${paramName}: ${paramValue}`);
+        }
+        
+        if (paramStrings.length > 0) {
+          code += `, ${paramStrings.join(', ')}`;
+        }
+        
+        code += ' do\n';
+      });
+      
+      // Indent based on number of effects
+      const indent = ''.padStart(effectsData.length * 2, ' ');
+      
+      // Add note with parameters
+      if (useScale) {
+        // Get the selected note for scale base and scale type
+        const noteSelect = document.getElementById(`${noteId}-note`);
+        const selectedNote = noteSelect.value.toLowerCase();
+        
+        // Find which octave is selected
+        const octaveButtons = document.querySelectorAll(`#${noteId}-octave-selector .octave-button`);
+        let selectedOctave = 3; // Default to octave 3
+        
+        octaveButtons.forEach((button, index) => {
+          if (button.classList.contains('selected')) {
+            selectedOctave = index + 1;
+          }
+        });
+        
+        const scaleType = document.getElementById(`${noteId}-scale-type`).value;
+        code += `${indent}play (scale :${selectedNote}${selectedOctave}, ${scaleType}).choose`;
+      } else {
+        code += `${indent}play ${midiValue}`;
+      }
+      
+      // Add parameters
+      const params = [];
+      if (parseFloat(attack) > 0) params.push(`attack: ${attack}`);
+      if (parseFloat(sustain) > 0) params.push(`sustain: ${sustain}`);
+      if (parseFloat(release) > 0) params.push(`release: ${release}`);
+      if (parseFloat(amp) !== 1) params.push(`amp: ${amp}`);
+      
+      if (params.length > 0) {
+        code += `, ${params.join(', ')}`;
+      }
+      
+      code += '\n';
+      
+      // Close all effect blocks
+      for (let i = 0; i < effectsData.length; i++) {
+        code += ''.padStart(i * 2, ' ') + 'end\n';
+      }
       
       return code;
     }
@@ -483,6 +1018,18 @@
         activeLoops[loopId] = loopName;
       } else {
         logMessage('Cannot start loop: not connected to server');
+      }
+    }
+    
+    function playNote(noteId) {
+      const noteCode = generateNoteCode(noteId);
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(noteCode);
+        logMessage(`Played note: ${noteId}`);
+        logMessage(`Code: ${noteCode}`);
+      } else {
+        logMessage('Cannot play note: not connected to server');
       }
     }
     
@@ -522,6 +1069,173 @@
       }
     }
     
+    function removeNote(noteId) {
+      // Remove the note card from the DOM
+      const noteCard = document.getElementById(noteId);
+      if (noteCard) {
+        noteCard.remove();
+      }
+    }
+    
+    function toggleNoteScaleMode(noteId) {
+      const useScale = document.getElementById(`${noteId}-use-scale`).checked;
+      document.getElementById(`${noteId}-scale-options`).style.display = useScale ? 'block' : 'none';
+    }
+    
+    function playNoteByNumber(number) {
+      const noteId = `note-${number}`;
+      const noteCard = document.getElementById(noteId);
+      
+      if (noteCard) {
+        // Add visual feedback
+        noteCard.classList.add('playing');
+        setTimeout(() => noteCard.classList.remove('playing'), 500);
+        
+        // Play the note
+        playNote(noteId);
+      }
+    }
+    
+    // Functions for handling effects
+    function addEffectToLoop(loopId) {
+      const effectsContainer = document.getElementById(`${loopId}-effects-container`);
+      const effectId = `${loopId}-effect-${Date.now()}`;
+      
+      // Create effect options
+      let effectOptions = '';
+      for (const [key, effect] of Object.entries(effects)) {
+        effectOptions += `<option value="${key}">${effect.name}</option>`;
+      }
+      
+      // Create the effect card
+      const effectCard = document.createElement('div');
+      effectCard.className = 'effect-card';
+      effectCard.id = effectId;
+      effectCard.innerHTML = `
+        <div class="effect-header">
+          <select class="effect-type" onchange="updateEffectParams('${effectId}', this.value)">
+            ${effectOptions}
+          </select>
+          <button class="remove-effect" onclick="removeEffect('${effectId}')">Remove</button>
+        </div>
+        <div class="effect-params" id="${effectId}-params">
+          <!-- Parameters will be added here -->
+        </div>
+      `;
+      
+      effectsContainer.appendChild(effectCard);
+      
+      // Initialize with the first effect in the list
+      const firstEffect = Object.keys(effects)[0];
+      updateEffectParams(effectId, firstEffect);
+    }
+    
+    function addEffectToNote(noteId) {
+      const effectsContainer = document.getElementById(`${noteId}-effects-container`);
+      const effectId = `${noteId}-effect-${Date.now()}`;
+      
+      // Create effect options
+      let effectOptions = '';
+      for (const [key, effect] of Object.entries(effects)) {
+        effectOptions += `<option value="${key}">${effect.name}</option>`;
+      }
+      
+      // Create the effect card
+      const effectCard = document.createElement('div');
+      effectCard.className = 'effect-card';
+      effectCard.id = effectId;
+      effectCard.innerHTML = `
+        <div class="effect-header">
+          <select class="effect-type" onchange="updateEffectParams('${effectId}', this.value)">
+            ${effectOptions}
+          </select>
+          <button class="remove-effect" onclick="removeEffect('${effectId}')">Remove</button>
+        </div>
+        <div class="effect-params" id="${effectId}-params">
+          <!-- Parameters will be added here -->
+        </div>
+      `;
+      
+      effectsContainer.appendChild(effectCard);
+      
+      // Initialize with the first effect in the list
+      const firstEffect = Object.keys(effects)[0];
+      updateEffectParams(effectId, firstEffect);
+    }
+    
+    function updateEffectParams(effectId, effectType) {
+      const paramsContainer = document.getElementById(`${effectId}-params`);
+      const effect = effects[effectType];
+      
+      if (!effect) return;
+      
+      let paramHtml = '';
+      for (const [paramName, paramConfig] of Object.entries(effect.params)) {
+        paramHtml += `
+          <div class="effect-param">
+            <label for="${effectId}-${paramName}">${paramName}:</label>
+            <input 
+              type="number" 
+              id="${effectId}-${paramName}" 
+              value="${paramConfig.default}" 
+              min="${paramConfig.min}" 
+              max="${paramConfig.max}" 
+              step="${paramConfig.step}"
+            >
+          </div>
+        `;
+      }
+      
+      paramsContainer.innerHTML = paramHtml;
+    }
+    
+    function removeEffect(effectId) {
+      const effectCard = document.getElementById(effectId);
+      if (effectCard) {
+        effectCard.remove();
+      }
+    }
+    
+    function getEffectsForElement(elementId) {
+      const effectsContainer = document.getElementById(`${elementId}-effects-container`);
+      const effectCards = effectsContainer.querySelectorAll('.effect-card');
+      const effectsData = [];
+      
+      effectCards.forEach(card => {
+        const effectType = card.querySelector('.effect-type').value;
+        const effect = effects[effectType];
+        const params = {};
+        
+        // Get parameter values
+        for (const paramName of Object.keys(effect.params)) {
+          const paramInput = card.querySelector(`#${card.id}-${paramName}`);
+          if (paramInput) {
+            params[paramName] = parseFloat(paramInput.value);
+          }
+        }
+        
+        effectsData.push({
+          type: effectType,
+          params: params
+        });
+      });
+      
+      return effectsData;
+    }
+    
+    // Add keyboard event listener to play notes with number keys
+    document.addEventListener('keydown', function(event) {
+      // Check if the key pressed is a number between 1-9
+      const key = parseInt(event.key);
+      if (!isNaN(key) && key >= 1 && key <= 9) {
+        // Don't trigger if user is typing in an input field
+        if (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA') {
+          playNoteByNumber(key);
+          event.preventDefault();
+        }
+      }
+    });
+    
     // Connect when page loads
     connectWebSocket();
     
@@ -534,6 +1248,9 @@
     
     // Add an initial loop
     addNewLoop();
+    
+    // Add an initial note
+    addNewNote();
   </script>
 </body>
 </html> 

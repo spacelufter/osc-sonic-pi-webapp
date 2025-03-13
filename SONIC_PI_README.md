@@ -70,6 +70,25 @@ The Loop Creator interface allows you to create and manage multiple Sonic Pi loo
 
 You can create multiple loops with different parameters, and they will all play simultaneously in Sonic Pi.
 
+## Using the Notes Tab
+
+The Notes tab provides a way to create and play individual notes with precise control:
+
+1. Click on the "Notes" tab in the HTML interface
+2. Click "Add Note" to create a new note
+3. Configure the note parameters:
+   - **Synth**: Choose from Sonic Pi's built-in synthesizers
+   - **Note**: Select the note (C, C#, D, etc.)
+   - **Octave**: Choose the octave (1-7) using the number buttons
+   - **Attack**: How quickly the note reaches full volume (0-5 seconds)
+   - **Sustain**: How long the note holds at full volume (0-5 seconds)
+   - **Release**: How long the note takes to fade out (0-5 seconds)
+   - **Amplitude**: The volume of the note (0-5)
+4. Click "Play Note" to play the note once
+5. Click "Remove" to delete the note
+
+You can create multiple notes with different parameters and play them individually. This is great for testing different sounds and creating melodies.
+
 ## Example Commands
 
 These commands are supported by all scripts:
