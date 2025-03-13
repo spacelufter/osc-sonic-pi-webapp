@@ -5,10 +5,42 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
+      margin: 0;
+      padding: 0;
       background-color: #f5f5f5;
+      display: flex;
+    }
+    .sidebar {
+      width: 250px;
+      background-color: #222;
+      color: white;
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      padding: 20px;
+      box-sizing: border-box;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .sidebar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #444;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 0;
+    }
+    .main-content {
+      margin-left: 250px;
+      max-width: 900px;
+      width: 100%;
+      padding: 20px;
     }
     .container {
       display: flex;
@@ -315,85 +347,140 @@
       font-size: 12px;
       padding: 3px 6px;
     }
+    .sidebar-empty-message {
+      color: #999;
+      font-style: italic;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .sidebar-loop-item {
+      background-color: #333;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-left: 3px solid #4CAF50;
+    }
+    .sidebar-loop-item.inactive {
+      border-left-color: #f44336;
+    }
+    .sidebar-loop-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sidebar-loop-details {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    .sidebar-loop-controls {
+      display: flex;
+      gap: 5px;
+    }
+    .sidebar-loop-controls button {
+      flex: 1;
+      padding: 4px;
+      font-size: 12px;
+    }
+    .clear-all-btn {
+      background-color: #f44336;
+      font-size: 12px;
+      padding: 4px 8px;
+    }
   </style>
 </head>
 <body>
-  <h1>Sonic Pi WebSocket Controller</h1>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2 class="sidebar-title">Active Loops</h2>
+      <button onclick="clearAllLoops()" class="clear-all-btn">Clear All</button>
+    </div>
+    <div id="sidebar-loops">
+      <!-- Loop items will be added here -->
+      <div class="sidebar-empty-message">No active loops</div>
+    </div>
+  </div>
   
-  <div class="container">
-    <div id="connection-status" class="status disconnected">
-      <div class="connection-form">
-        <div class="port-input-group">
-          <label for="port-number">Sonic Pi Port:</label>
-          <input type="number" id="port-number" value="4560" min="1" max="65535">
-          <button id="connect-button" onclick="connectToSonicPi()">Connect</button>
-        </div>
-        <div class="connection-message">Disconnected</div>
-      </div>
-    </div>
+  <div class="main-content">
+    <h1>Sonic Pi WebSocket Controller</h1>
     
-    <div class="tab-container">
-      <div class="tab-buttons">
-        <button class="tab-button active" onclick="openTab(event, 'simple-commands')">Simple Commands</button>
-        <button class="tab-button" onclick="openTab(event, 'loop-creator')">Loop Creator</button>
-        <button class="tab-button" onclick="openTab(event, 'notes-creator')">Notes</button>
+    <div class="container">
+      <div id="connection-status" class="status disconnected">
+        <div class="connection-form">
+          <div class="port-input-group">
+            <label for="port-number">Sonic Pi Port:</label>
+            <input type="number" id="port-number" value="4560" min="1" max="65535">
+            <button id="connect-button" onclick="connectToSonicPi()">Connect</button>
+          </div>
+          <div class="connection-message">Disconnected</div>
+        </div>
       </div>
       
-      <div id="simple-commands" class="tab-content active">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Send Custom Command</h2>
+      <div class="tab-container">
+        <div class="tab-buttons">
+          <button class="tab-button active" onclick="openTab(event, 'simple-commands')">Simple Commands</button>
+          <button class="tab-button" onclick="openTab(event, 'loop-creator')">Loop Creator</button>
+          <button class="tab-button" onclick="openTab(event, 'notes-creator')">Notes</button>
+        </div>
+        
+        <div id="simple-commands" class="tab-content active">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Send Custom Command</h2>
+            </div>
+            <div class="input-group">
+              <input id="message" type="text" placeholder="Enter Sonic Pi code (e.g., play 60)">
+              <button onclick="sendMessage()">Send</button>
+            </div>
+            
+            <h3>Examples</h3>
+            <div class="examples">
+              <button class="example-button" onclick="sendExample('play 60')">Play Middle C</button>
+              <button class="example-button" onclick="sendExample('play_chord [60, 64, 67]')">Play C Major Chord</button>
+              <button class="example-button" onclick="sendExample('use_synth :fm; play 72')">FM Synth High C</button>
+              <button class="example-button" onclick="sendExample('sample :loop_amen')">Amen Break</button>
+              <button class="example-button" onclick="sendExample('use_bpm 120; 16.times do\n  sample :bd_haus, rate: 1\n  sleep 0.5\nend')">Drum Loop</button>
+              <button class="example-button" onclick="sendExample('use_synth :tb303; play_pattern_timed scale(:e3, :minor), 0.25, release: 0.1')">TB303 Pattern</button>
+            </div>
           </div>
-          <div class="input-group">
-            <input id="message" type="text" placeholder="Enter Sonic Pi code (e.g., play 60)">
-            <button onclick="sendMessage()">Send</button>
+        </div>
+        
+        <div id="loop-creator" class="tab-content">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Create New Loop</h2>
+              <button onclick="addNewLoop()">+ Add Loop</button>
+            </div>
+            
+            <div id="loops-container" class="loop-container">
+              <!-- Loop cards will be added here -->
+            </div>
           </div>
-          
-          <h3>Examples</h3>
-          <div class="examples">
-            <button class="example-button" onclick="sendExample('play 60')">Play Middle C</button>
-            <button class="example-button" onclick="sendExample('play_chord [60, 64, 67]')">Play C Major Chord</button>
-            <button class="example-button" onclick="sendExample('use_synth :fm; play 72')">FM Synth High C</button>
-            <button class="example-button" onclick="sendExample('sample :loop_amen')">Amen Break</button>
-            <button class="example-button" onclick="sendExample('use_bpm 120; 16.times do\n  sample :bd_haus, rate: 1\n  sleep 0.5\nend')">Drum Loop</button>
-            <button class="example-button" onclick="sendExample('use_synth :tb303; play_pattern_timed scale(:e3, :minor), 0.25, release: 0.1')">TB303 Pattern</button>
+        </div>
+        
+        <div id="notes-creator" class="tab-content">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Create Individual Notes</h2>
+              <button onclick="addNewNote()">+ Add Note</button>
+            </div>
+            
+            <div id="notes-container" class="note-container">
+              <!-- Note cards will be added here -->
+            </div>
           </div>
         </div>
       </div>
       
-      <div id="loop-creator" class="tab-content">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Create New Loop</h2>
-            <button onclick="addNewLoop()">+ Add Loop</button>
-          </div>
-          
-          <div id="loops-container" class="loop-container">
-            <!-- Loop cards will be added here -->
-          </div>
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Response</h2>
+          <button onclick="clearOutput()">Clear</button>
         </div>
+        <div id="output"></div>
       </div>
-      
-      <div id="notes-creator" class="tab-content">
-        <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Create Individual Notes</h2>
-            <button onclick="addNewNote()">+ Add Note</button>
-          </div>
-          
-          <div id="notes-container" class="note-container">
-            <!-- Note cards will be added here -->
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="card">
-      <div class="card-header">
-        <h2 class="card-title">Response</h2>
-        <button onclick="clearOutput()">Clear</button>
-      </div>
-      <div id="output"></div>
     </div>
   </div>
 
@@ -625,7 +712,7 @@
         <div class="loop-status" id="${loopId}-status"></div>
         <div class="control-group">
           <label for="${loopId}-name">Loop Name:</label>
-          <input type="text" id="${loopId}-name" value="my_loop_${loopCounter}" placeholder="Enter loop name">
+          <input type="text" id="${loopId}-name" value="my_loop_${loopCounter}" placeholder="Enter loop name" onchange="updateSidebarLoops()">
         </div>
         
         <div class="loop-controls">
@@ -705,6 +792,9 @@
       
       loopsContainer.appendChild(loopCard);
       updateLoopNoteValue(loopId); // Initialize the MIDI value
+      
+      // Update the sidebar to show the new loop
+      updateSidebarLoops();
     }
     
     function selectLoopOctave(loopId, octave) {
@@ -1026,7 +1116,7 @@
         });
         
         const scaleType = document.getElementById(`${noteId}-scale-type`).value;
-        code += `${indent}play (scale :${selectedNote}${selectedOctave}, ${scaleType}).choose`;
+        code += `${indent}play (scale :${selectedNote}${selectedOctave}, ${scaleType}).tick`;
       } else {
         code += `${indent}play ${midiValue}`;
       }
@@ -1068,6 +1158,9 @@
         // Store the loop name for stopping later
         const loopName = document.getElementById(`${loopId}-name`).value;
         activeLoops[loopId] = loopName;
+        
+        // Update the sidebar
+        updateSidebarLoops();
       } else {
         logMessage('Cannot start loop: not connected to server');
       }
@@ -1107,6 +1200,9 @@
         
         // Remove from active loops
         delete activeLoops[loopId];
+        
+        // Update the sidebar
+        updateSidebarLoops();
       } else {
         logMessage('Cannot stop loop: not connected to server');
       }
@@ -1123,6 +1219,9 @@
       if (loopCard) {
         loopCard.remove();
       }
+      
+      // Update the sidebar
+      updateSidebarLoops();
     }
     
     function removeNote(noteId) {
@@ -1304,6 +1403,137 @@
     
     // Add an initial note
     addNewNote();
+    
+    // Function to update the sidebar loops list
+    function updateSidebarLoops() {
+      const sidebarLoops = document.getElementById('sidebar-loops');
+      const emptyMessage = document.querySelector('.sidebar-empty-message');
+      
+      // Clear existing content except the empty message
+      Array.from(sidebarLoops.children).forEach(child => {
+        if (!child.classList.contains('sidebar-empty-message')) {
+          child.remove();
+        }
+      });
+      
+      // Get all loops from the loops container
+      const allLoopCards = document.querySelectorAll('.loop-card');
+      
+      // Show/hide empty message
+      if (allLoopCards.length === 0) {
+        emptyMessage.style.display = 'block';
+        return;
+      } else {
+        emptyMessage.style.display = 'none';
+      }
+      
+      // Add each loop to the sidebar
+      allLoopCards.forEach(loopCard => {
+        const loopId = loopCard.id;
+        const loopName = document.getElementById(`${loopId}-name`).value;
+        const synth = document.getElementById(`${loopId}-synth`).value;
+        const isActive = activeLoops[loopId] !== undefined;
+        
+        // Create sidebar loop item
+        const sidebarItem = document.createElement('div');
+        sidebarItem.className = `sidebar-loop-item ${isActive ? 'active' : 'inactive'}`;
+        sidebarItem.innerHTML = `
+          <div class="sidebar-loop-name" onclick="selectLoop('${loopId}')" style="cursor: pointer;">${loopName}</div>
+          <div class="sidebar-loop-details">Synth: ${synth}</div>
+          <div class="sidebar-loop-controls">
+            <button onclick="startLoop('${loopId}')" ${isActive ? 'disabled' : ''}>Play</button>
+            <button onclick="stopLoop('${loopId}')" ${!isActive ? 'disabled' : ''}>Stop</button>
+            <button onclick="removeLoop('${loopId}')">Delete</button>
+          </div>
+        `;
+        
+        sidebarLoops.appendChild(sidebarItem);
+      });
+    }
+    
+    // Initial update of sidebar
+    updateSidebarLoops();
+    
+    // Function to select and scroll to a loop
+    function selectLoop(loopId) {
+      // Make sure we're on the loop creator tab
+      const loopCreatorTab = document.getElementById('loop-creator');
+      if (!loopCreatorTab.classList.contains('active')) {
+        // Find and click the loop creator tab button
+        const tabButtons = document.getElementsByClassName('tab-button');
+        for (let i = 0; i < tabButtons.length; i++) {
+          if (tabButtons[i].textContent.trim() === 'Loop Creator') {
+            openTab({ currentTarget: tabButtons[i] }, 'loop-creator');
+            break;
+          }
+        }
+      }
+      
+      // Highlight the loop in main content
+      const loopCard = document.getElementById(loopId);
+      if (loopCard) {
+        // Temporarily highlight the card
+        loopCard.style.boxShadow = '0 0 10px #4CAF50';
+        
+        // Scroll to the loop card
+        loopCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Remove highlight after a delay
+        setTimeout(() => {
+          loopCard.style.boxShadow = '';
+        }, 2000);
+      }
+    }
+    
+    // Function to clear all loops
+    function clearAllLoops() {
+      // Check if WebSocket is connected first
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        logMessage('Cannot clear loops: not connected to server');
+        return;
+      }
+      
+      // Create a copy of active loop IDs before modifying
+      const activeLoopIds = Object.keys(activeLoops);
+      
+      if (activeLoopIds.length === 0) {
+        logMessage('No active loops to clear');
+        return;
+      }
+      
+      logMessage(`Clearing ${activeLoopIds.length} loops...`);
+      
+      // First stop all active loops using the copy
+      for (const loopId of activeLoopIds) {
+        const loopName = activeLoops[loopId];
+        const stopCode = `live_loop :${loopName} do\n  stop\nend`;
+        
+        ws.send(stopCode);
+        
+        // Update status and remove from active loops
+        const statusElement = document.getElementById(`${loopId}-status`);
+        if (statusElement) {
+          statusElement.classList.remove('loop-running');
+        }
+        delete activeLoops[loopId];
+      }
+      
+      // Then remove all loop cards
+      const loopCards = document.querySelectorAll('.loop-card');
+      if (loopCards.length === 0) {
+        logMessage('No loop cards found to remove');
+      } else {
+        loopCards.forEach(card => {
+          card.remove();
+        });
+        logMessage(`Removed ${loopCards.length} loop cards`);
+      }
+      
+      // Update the sidebar
+      updateSidebarLoops();
+      
+      logMessage('All loops cleared');
+    }
   </script>
 </body>
 </html> 
