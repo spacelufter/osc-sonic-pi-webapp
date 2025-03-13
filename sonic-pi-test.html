@@ -556,15 +556,8 @@
       if (!message) return;
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        // If we have a port number, include it with the message
-        if (window.sonicPiPort) {
-          ws.send(JSON.stringify({
-            code: message,
-            port: window.sonicPiPort
-          }));
-        } else {
-          ws.send(message);
-        }
+        // Send just the code, not a JSON object
+        ws.send(message);
         
         logMessage(`Sent: ${message}`);
         document.getElementById('message').value = '';
@@ -1063,15 +1056,8 @@
       const loopCode = generateLoopCode(loopId);
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        // If we have a port number, include it with the message
-        if (window.sonicPiPort) {
-          ws.send(JSON.stringify({
-            code: loopCode,
-            port: window.sonicPiPort
-          }));
-        } else {
-          ws.send(loopCode);
-        }
+        // Send just the code, not a JSON object
+        ws.send(loopCode);
         
         logMessage(`Started loop: ${loopId}`);
         logMessage(`Code: ${loopCode}`);
@@ -1091,15 +1077,8 @@
       const noteCode = generateNoteCode(noteId);
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        // If we have a port number, include it with the message
-        if (window.sonicPiPort) {
-          ws.send(JSON.stringify({
-            code: noteCode,
-            port: window.sonicPiPort
-          }));
-        } else {
-          ws.send(noteCode);
-        }
+        // Send just the code, not a JSON object
+        ws.send(noteCode);
         
         logMessage(`Played note: ${noteId}`);
         logMessage(`Code: ${noteCode}`);
@@ -1118,15 +1097,8 @@
       const stopCode = `live_loop :${loopName} do\n  stop\nend`;
       
       if (ws && ws.readyState === WebSocket.OPEN) {
-        // If we have a port number, include it with the message
-        if (window.sonicPiPort) {
-          ws.send(JSON.stringify({
-            code: stopCode,
-            port: window.sonicPiPort
-          }));
-        } else {
-          ws.send(stopCode);
-        }
+        // Send just the code, not a JSON object
+        ws.send(stopCode);
         
         logMessage(`Stopped loop: ${loopId}`);
         
