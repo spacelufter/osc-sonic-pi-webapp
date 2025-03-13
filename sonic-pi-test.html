@@ -389,6 +389,32 @@
       font-size: 12px;
       padding: 4px 8px;
     }
+    .notes-list {
+      margin: 10px 0;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      border: 1px solid #eee;
+      min-height: 50px;
+    }
+    
+    .note-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    
+    .add-note-btn {
+      background-color: #2196F3;
+      font-size: 12px;
+      padding: 4px 8px;
+      margin-top: 5px;
+    }
   </style>
 </head>
 <body>
@@ -724,37 +750,27 @@
           </div>
           
           <div class="control-group">
-            <label for="${loopId}-note">Note:</label>
-            <select id="${loopId}-note" onchange="updateLoopNoteValue('${loopId}')">
-              ${noteOptions}
-            </select>
-            <div class="octave-selector" id="${loopId}-octave-selector">
-              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 1)">1</button>
-              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 2)">2</button>
-              <button class="octave-button selected" onclick="selectLoopOctave('${loopId}', 3)">3</button>
-              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 4)">4</button>
-              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 5)">5</button>
-              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 6)">6</button>
-              <button class="octave-button" onclick="selectLoopOctave('${loopId}', 7)">7</button>
+            <label>Notes:</label>
+            <div id="${loopId}-notes-list" class="notes-list">
+              <!-- Notes will be added here -->
             </div>
-            <input type="hidden" id="${loopId}-midi-value" value="60">
-          </div>
-          
-          <div class="control-group">
-            <label>
-              <input type="checkbox" id="${loopId}-use-scale" onchange="toggleLoopScaleMode('${loopId}')"> Use Scale
-            </label>
-            <div id="${loopId}-scale-options" style="display: none; margin-top: 5px;">
-              <label for="${loopId}-scale-type">Scale Type:</label>
-              <select id="${loopId}-scale-type">
-                ${scales.map(scale => `<option value=":${scale}">:${scale}</option>`).join('')}
-              </select>
-            </div>
+            <button class="add-note-btn" onclick="addNoteToLoopList('${loopId}')">+ Add Note</button>
           </div>
           
           <div class="control-group">
             <label for="${loopId}-sleep">Sleep Time:</label>
-            <input type="number" id="${loopId}-sleep" value="0.5" min="0.1" max="10" step="0.1">
+            <select id="${loopId}-sleep">
+              <option value="1">1/4 note (Quarter note)</option>
+              <option value="0.5" selected>1/8 note (Eighth note)</option>
+              <option value="0.25">1/16 note (Sixteenth note)</option>
+              <option value="0.125">1/32 note (Thirty-second note)</option>
+            </select>
+          </div>
+          
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="${loopId}-use-tick"> Use Tick (Play Notes Sequentially)
+            </label>
           </div>
           
           <div class="control-group">
@@ -791,15 +807,20 @@
       `;
       
       loopsContainer.appendChild(loopCard);
-      updateLoopNoteValue(loopId); // Initialize the MIDI value
+      
+      // Add an initial note to the loop
+      addNoteToLoopList(loopId);
       
       // Update the sidebar to show the new loop
       updateSidebarLoops();
     }
     
     function selectLoopOctave(loopId, octave) {
-      // Update the octave buttons
-      const octaveButtons = document.querySelectorAll(`#${loopId}-octave-selector .octave-button`);
+      const loopCard = document.getElementById(loopId);
+      if (!loopCard) return;
+      
+      // Update the octave buttons within this loop card
+      const octaveButtons = loopCard.querySelectorAll('.octave-button');
       octaveButtons.forEach((button, index) => {
         if (index === octave - 1) {
           button.classList.add('selected');
@@ -818,11 +839,17 @@
     }
     
     function updateLoopNoteValue(loopId) {
-      const noteSelect = document.getElementById(`${loopId}-note`);
+      const loopCard = document.getElementById(loopId);
+      if (!loopCard) {
+        console.log('Loop card not found:', loopId);
+        return;
+      }
+      
+      const noteSelect = loopCard.querySelector('.note-select');
       const selectedNote = noteSelect.value;
       
       // Find which octave is selected
-      const octaveButtons = document.querySelectorAll(`#${loopId}-octave-selector .octave-button`);
+      const octaveButtons = loopCard.querySelectorAll('.octave-button');
       let selectedOctave = 3; // Default to octave 3
       
       octaveButtons.forEach((button, index) => {
@@ -835,23 +862,94 @@
       const midiValue = midiNotes[selectedNote][selectedOctave - 1];
       
       // Update the hidden input
-      document.getElementById(`${loopId}-midi-value`).value = midiValue;
+      const midiInput = loopCard.querySelector('.midi-value');
+      if (midiInput) {
+        midiInput.value = midiValue;
+        console.log(`Updated note ${selectedNote} octave ${selectedOctave} to MIDI value ${midiValue}`);
+      }
     }
     
-    function addNoteToLoop(loopId, note) {
-      document.getElementById(`${loopId}-note`).value = note;
-      updateLoopNoteValue(loopId);
+    function addNoteToLoopList(loopId) {
+      const notesList = document.getElementById(`${loopId}-notes-list`);
+      const noteId = `${loopId}-note-${Date.now()}`;
+      
+      // Create note options
+      let noteOptions = '';
+      notes.forEach(note => {
+        noteOptions += `<option value="${note}">${note}</option>`;
+      });
+      
+      const noteItem = document.createElement('div');
+      noteItem.className = 'note-item';
+      noteItem.id = noteId;
+      noteItem.innerHTML = `
+        <select class="note-select" onchange="updateLoopNoteValue('${noteId}')">
+          ${noteOptions}
+        </select>
+        <div class="octave-selector">
+          <button class="octave-button" onclick="selectLoopOctave('${noteId}', 1)">1</button>
+          <button class="octave-button" onclick="selectLoopOctave('${noteId}', 2)">2</button>
+          <button class="octave-button selected" onclick="selectLoopOctave('${noteId}', 3)">3</button>
+          <button class="octave-button" onclick="selectLoopOctave('${noteId}', 4)">4</button>
+          <button class="octave-button" onclick="selectLoopOctave('${noteId}', 5)">5</button>
+          <button class="octave-button" onclick="selectLoopOctave('${noteId}', 6)">6</button>
+          <button class="octave-button" onclick="selectLoopOctave('${noteId}', 7)">7</button>
+        </div>
+        <input type="hidden" class="midi-value" value="60">
+        <button class="remove-note" onclick="removeNoteFromLoop('${noteId}')">Remove</button>
+      `;
+      
+      notesList.appendChild(noteItem);
+      
+      // Initialize with default note (C) and octave 3
+      const noteSelect = noteItem.querySelector('.note-select');
+      noteSelect.value = 'C';
+      const midiInput = noteItem.querySelector('.midi-value');
+      midiInput.value = midiNotes['C'][2]; // Index 2 is octave 3
+      console.log(`Initialized note with MIDI value: ${midiInput.value}`);
+    }
+    
+    function removeNoteFromLoop(noteId) {
+      const noteItem = document.getElementById(noteId);
+      if (noteItem) {
+        noteItem.remove();
+      }
+    }
+    
+    function getLoopNotes(loopId) {
+      const notesList = document.getElementById(`${loopId}-notes-list`);
+      if (!notesList) return [];
+      
+      const noteItems = notesList.querySelectorAll('.note-item');
+      const midiValues = [];
+      
+      noteItems.forEach(noteItem => {
+        const midiInput = noteItem.querySelector('.midi-value');
+        if (midiInput && midiInput.value) {
+          const midiValue = parseInt(midiInput.value);
+          midiValues.push(midiValue);
+        }
+      });
+      
+      console.log('Loop notes:', midiValues);
+      return midiValues;
     }
     
     function generateLoopCode(loopId) {
       const loopName = document.getElementById(`${loopId}-name`).value;
       const synth = document.getElementById(`${loopId}-synth`).value;
-      const midiValue = document.getElementById(`${loopId}-midi-value`).value;
       const sleep = document.getElementById(`${loopId}-sleep`).value;
       const attack = document.getElementById(`${loopId}-attack`).value;
       const sustain = document.getElementById(`${loopId}-sustain`).value;
       const release = document.getElementById(`${loopId}-release`).value;
-      const useScale = document.getElementById(`${loopId}-use-scale`).checked;
+      
+      // Get all notes for this loop
+      const midiValues = getLoopNotes(loopId);
+      
+      if (midiValues.length === 0) {
+        logMessage(`Warning: Loop ${loopId} has no notes defined`);
+        return '';
+      }
       
       // Get effects
       const effectsData = getEffectsForElement(loopId);
@@ -882,26 +980,27 @@
       // Indent based on number of effects
       const indent = '  ' + '  '.repeat(effectsData.length);
       
-      // Add note with parameters
-      if (useScale) {
-        // Get the selected note for scale base and scale type
-        const noteSelect = document.getElementById(`${loopId}-note`);
-        const selectedNote = noteSelect.value.toLowerCase();
-        
-        // Find which octave is selected
-        const octaveButtons = document.querySelectorAll(`#${loopId}-octave-selector .octave-button`);
-        let selectedOctave = 3; // Default to octave 3
-        
-        octaveButtons.forEach((button, index) => {
-          if (button.classList.contains('selected')) {
-            selectedOctave = index + 1;
-          }
-        });
-        
-        const scaleType = document.getElementById(`${loopId}-scale-type`).value;
-        code += `${indent}play (scale :${selectedNote}${selectedOctave}, ${scaleType}).tick`;
+      // Add notes with parameters
+      if (midiValues.length === 1) {
+        code += `${indent}play ${midiValues[0]}`;
       } else {
-        code += `${indent}play ${midiValue}`;
+        const useTick = document.getElementById(`${loopId}-use-tick`).checked;
+        if (useTick) {
+          // Convert MIDI values to note names with octaves for ring syntax
+          const noteRings = midiValues.map(midi => {
+            const noteNames = Object.entries(midiNotes);
+            for (const [note, values] of noteNames) {
+              const octaveIndex = values.indexOf(parseInt(midi));
+              if (octaveIndex !== -1) {
+                return `:${note.toLowerCase()}${octaveIndex + 1}`;
+              }
+            }
+            return midi; // Fallback to MIDI value if note name not found
+          });
+          code += `${indent}play ring(${noteRings.join(', ')}).tick`;
+        } else {
+          code += `${indent}play_chord [${midiValues.join(', ')}]`;
+        }
       }
       
       // Only add parameters if they have non-zero values
@@ -1029,8 +1128,11 @@
     }
     
     function selectOctave(noteId, octave) {
-      // Update the octave buttons
-      const octaveButtons = document.querySelectorAll(`#${noteId}-octave-selector .octave-button`);
+      const noteItem = document.getElementById(noteId);
+      if (!noteItem) return;
+      
+      // Update the octave buttons within this note item
+      const octaveButtons = noteItem.querySelectorAll('.octave-button');
       octaveButtons.forEach((button, index) => {
         if (index === octave - 1) {
           button.classList.add('selected');
@@ -1040,7 +1142,7 @@
       });
       
       // Update the MIDI value
-      updateNoteValue(noteId);
+      updateLoopNoteValue(noteId);
     }
     
     function updateNoteValue(noteId) {
